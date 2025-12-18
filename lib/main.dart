@@ -1,5 +1,6 @@
+import 'zq_user_management/login/spash_screen.dart';
 import 'package:flutter/material.dart';
-import 'mood.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,12 +13,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'DSA MindHealth',
       theme: ThemeData(
 
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: .fromSeed(seedColor: const Color(0xFF9FB7D9)),
       ),
-      home: Mood(),
+      home: const SplashScreen(),
     );
   }
 }
