@@ -7,11 +7,14 @@ import 'MoodDatabase.dart';
 class describeMood extends StatefulWidget {
   final DateTime date;
   final String moodAssetPath;
+  final int userId;
+
 
   const describeMood({
     super.key,
     required this.date,
     required this.moodAssetPath,
+    required this.userId,
   });
 
   @override
@@ -42,7 +45,11 @@ class _describeMoodState extends State<describeMood> {
   }
 
   int _getScaleFromMoodAsset(String assetPath) {
-    final moodName = assetPath.split('/').last.split('.').first;
+    final moodName = assetPath
+        .split('/')
+        .last
+        .split('.')
+        .first;
     switch (moodName) {
       case 'Great':
         return 5;
@@ -62,14 +69,18 @@ class _describeMoodState extends State<describeMood> {
   }
 
   String _getMoodNameFromAsset(String assetPath) {
-    return assetPath.split('/').last.split('.').first.replaceAll('_', ' ');
+    return assetPath
+        .split('/')
+        .last
+        .split('.')
+        .first
+        .replaceAll('_', ' ');
   }
 
   void _saveMood() async {
     final int scale = _getScaleFromMoodAsset(_currentMoodAssetPath);
     final String title = _titleCtrl.text.trim();
     final String description = _descriptionCtrl.text.trim();
-
     if (title.isEmpty && description.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a title or description.')),
@@ -79,6 +90,7 @@ class _describeMoodState extends State<describeMood> {
 
     final newMood = MoodModel(
       id: 0,
+      userId: widget.userId,
       scale: scale,
       title: title,
       description: description,
@@ -176,26 +188,16 @@ class _describeMoodState extends State<describeMood> {
   @override
   Widget build(BuildContext context) {
     final String moodName = _getMoodNameFromAsset(_currentMoodAssetPath);
-    final String formattedDate = DateFormat(
-      'dd/MM/yyyy EEEE',
-    ).format(widget.date);
+    final String formattedDate = DateFormat('dd/MM/yyyy EEEE').format(
+        widget.date);
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.blue.shade300,
+        backgroundColor: const Color(0xFFDAE5FF),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check, color: Colors.black),
-            onPressed: _saveMood,
-          ),
-        ],
+        title: const Text(
+            "Describe Mood", style: TextStyle(color: Colors.black)),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -219,10 +221,11 @@ class _describeMoodState extends State<describeMood> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    const Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         Icon(Icons.edit, size: 14, color: Colors.grey),
+                        Text(" Tap to change", style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
                   ],
@@ -232,15 +235,10 @@ class _describeMoodState extends State<describeMood> {
             const SizedBox(height: 30),
             TextField(
               controller: _titleCtrl,
-              keyboardType: TextInputType.text,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
                 hintText: 'Title...',
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 0,
-                  vertical: 8,
-                ),
               ),
             ),
             const Divider(height: 1, thickness: 0.5),
@@ -248,27 +246,42 @@ class _describeMoodState extends State<describeMood> {
 
             TextField(
               controller: _descriptionCtrl,
-              keyboardType: TextInputType.multiline,
               maxLines: null,
               style: const TextStyle(fontSize: 16),
               decoration: const InputDecoration(
                 hintText: 'Write something here...',
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 0,
-                  vertical: 8,
-                ),
               ),
             ),
           ],
         ),
       ),
-
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: IconButton(
-          icon: const Icon(Icons.delete_forever, size: 30, color: Colors.grey),
-          onPressed: _showDeleteConfirmationDialog,
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF91B1E0),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _showDeleteConfirmationDialog,
+              child: const Text('CLEAR', style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF91B1E0),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _saveMood,
+              child: const Text('SUBMIT', style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       ),
     );

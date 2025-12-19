@@ -5,7 +5,8 @@ import 'calendar.dart';
 import 'describeMood.dart';
 
 class Mood extends StatefulWidget {
-  const Mood({super.key});
+  final int userId;
+  const Mood({super.key, required this.userId});
 
   @override
   State<Mood> createState() => _MoodState();
@@ -73,11 +74,11 @@ class _MoodState extends State<Mood> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month),
+            icon: const Icon(Icons.calendar_month, color: Colors.black),
             onPressed: () {
               Navigator.of(
                 context,
-              ).push(MaterialPageRoute(builder: (context) => const calendar()));
+              ).push(MaterialPageRoute(builder: (context) => calendar(userId: widget.userId,)));
             },
           ),
         ],
@@ -123,6 +124,7 @@ class _MoodState extends State<Mood> {
                                 builder: (context) => describeMood(
                                   date: today,
                                   moodAssetPath: selectedMoodAsset!,
+                                  userId: widget.userId,
                                 ),
                               ),
                             );

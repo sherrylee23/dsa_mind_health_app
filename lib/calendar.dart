@@ -7,7 +7,8 @@ import 'MoodModel.dart';
 import 'MoodDatabase.dart';
 
 class calendar extends StatefulWidget {
-  const calendar({super.key});
+  final int userId;
+  const calendar({super.key, required this.userId});
 
   @override
   State<calendar> createState() => _calendarState();
@@ -106,7 +107,7 @@ class _calendarState extends State<calendar> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MoodCount(displayMonth: _displayMonth),
+                  builder: (context) => MoodCount(displayMonth: _displayMonth, userId: widget.userId,),
                 ),
               );
             },
@@ -117,7 +118,7 @@ class _calendarState extends State<calendar> {
       ),
       body: FutureBuilder<List<MoodModel>>(
         key: ValueKey(_refreshKey),
-        future: moodDB.getMood(),
+        future: moodDB.getMood(userId: widget.userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -214,6 +215,7 @@ class _calendarState extends State<calendar> {
                             MaterialPageRoute(
                               builder: (context) => Monthlymooddetail(
                                 displayMonth: _displayMonth,
+                                userId: widget.userId,
                               ),
                             ),
                           );

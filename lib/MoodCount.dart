@@ -5,7 +5,8 @@ import 'MoodDatabase.dart';
 
 class MoodCount extends StatefulWidget {
   final DateTime displayMonth;
-  const MoodCount({super.key, required this.displayMonth});
+  final int userId;
+  const MoodCount({super.key, required this.displayMonth, required this.userId});
 
   @override
   State<MoodCount> createState() => _MoodCountState();
@@ -81,7 +82,7 @@ class _MoodCountState extends State<MoodCount> {
         ),
       ),
       body: FutureBuilder<List<MoodModel>>(
-        future: moodDB.getMood(),
+        future: moodDB.getMood(userId: widget.userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

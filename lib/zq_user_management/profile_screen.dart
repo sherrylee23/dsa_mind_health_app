@@ -1,3 +1,4 @@
+import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import 'edit_profile.dart';
 import 'about/about_screen.dart';
@@ -16,7 +17,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final userDb = UserDatabaseService();
+  final userDb = MoodDatabase();
   UserModel? _user;
 
   @override

@@ -1,3 +1,4 @@
+import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import '../service/user_database.dart';
 import '../models/user_model.dart';
@@ -12,7 +13,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final emailCtrl = TextEditingController();
-  final userDb = UserDatabaseService();
+  final userDb = MoodDatabase();
   String? _errorText;
 
   @override

@@ -5,8 +5,9 @@ import 'MoodDatabase.dart';
 
 class Monthlymooddetail extends StatefulWidget {
   final DateTime displayMonth;
+  final int userId;
 
-  const Monthlymooddetail({super.key, required this.displayMonth});
+  const Monthlymooddetail({super.key, required this.displayMonth, required this.userId});
 
   @override
   State<Monthlymooddetail> createState() => _MonthlymooddetailState();
@@ -14,6 +15,9 @@ class Monthlymooddetail extends StatefulWidget {
 
 class _MonthlymooddetailState extends State<Monthlymooddetail> {
   final moodDB = MoodDatabase();
+
+  // Track the current sorting order
+  String _currentSort = 'createdOn DESC';
 
   String _getAssetPath(int scale) {
     switch (scale) {
@@ -32,10 +36,10 @@ class _MonthlymooddetailState extends State<Monthlymooddetail> {
       default:
         return 'assets/images/Okay.png';
     }
-  }
+  } // <--- FIXED: Added missing closing brace here
 
   @override
-  Widget build(BuildContext Context) {
+  Widget build(BuildContext context) { // FIXED: context should be lowercase
     return Scaffold(
       appBar: AppBar(
         title: Text(DateFormat('MMM yyyy').format(widget.displayMonth)),
@@ -44,20 +48,37 @@ class _MonthlymooddetailState extends State<Monthlymooddetail> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // SORTING BUTTON
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.sort),
+            onSelected: (String value) {
+              setState(() {
+                _currentSort = value;
+              });
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'createdOn DESC', child: Text('Newest First')),
+              const PopupMenuItem(value: 'createdOn ASC', child: Text('Oldest First')),
+            ],
+          )
+        ],
       ),
       body: FutureBuilder<List<MoodModel>>(
-        future: moodDB.getMood(),
+        // Pass the sort string to the database
+        future: moodDB.getMood(userId: widget.userId, sortBy: _currentSort),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasData) {
-            final montlyMoods = snapshot.data!.where((mood) {
+            final monthlyMoods = snapshot.data!.where((mood) {
               DateTime moodDate = DateTime.parse(mood.createdOn);
               return moodDate.month == widget.displayMonth.month &&
                   moodDate.year == widget.displayMonth.year;
             }).toList();
-            if (montlyMoods.isEmpty) {
+
+            if (monthlyMoods.isEmpty) {
               return const Center(
                 child: Text("No moods recorded for this month."),
               );
@@ -65,9 +86,9 @@ class _MonthlymooddetailState extends State<Monthlymooddetail> {
 
             return ListView.builder(
               padding: const EdgeInsets.all(10),
-              itemCount: montlyMoods.length,
+              itemCount: monthlyMoods.length,
               itemBuilder: (context, index) {
-                final mood = montlyMoods[index];
+                final mood = monthlyMoods[index];
                 final date = DateTime.parse(mood.createdOn);
 
                 return Container(
@@ -115,7 +136,6 @@ class _MonthlymooddetailState extends State<Monthlymooddetail> {
                           ],
                         ),
                       ),
-
                       IconButton(
                         icon: Icon(
                           mood.isFavorite == 1 ? Icons.star : Icons.star_border,
@@ -134,7 +154,7 @@ class _MonthlymooddetailState extends State<Monthlymooddetail> {
               },
             );
           }
-          return const Center(child: Text("Something wrong."));
+          return const Center(child: Text("Something went wrong."));
         },
       ),
     );
