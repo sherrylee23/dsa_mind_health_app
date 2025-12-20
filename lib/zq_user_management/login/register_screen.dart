@@ -1,3 +1,4 @@
+import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import '../service/user_database.dart';  // Database service
 import '../models/user_model.dart';     // User model
@@ -16,7 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passCtrl = TextEditingController();
   final confirmCtrl = TextEditingController();
 
-  final userDb = UserDatabaseService();
+  final userDb = MoodDatabase();
   String? _errorText;
   String? _selectedGender;
 

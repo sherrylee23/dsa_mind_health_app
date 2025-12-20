@@ -1,3 +1,4 @@
+import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import 'models/user_model.dart';
 import 'service/user_database.dart';
@@ -22,7 +23,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _errorText;
   bool _isSaving = false;
 
-  final userDb = UserDatabaseService();
+  final userDb = MoodDatabase();
 
   @override
   void initState() {

@@ -1,3 +1,5 @@
+import 'package:dsa_mind_health/MoodDatabase.dart';
+import 'package:dsa_mind_health/mood.dart';
 import 'package:flutter/material.dart';
 import 'service/user_database.dart';
 
@@ -17,7 +19,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final oldPassCtrl = TextEditingController();
   final newPassCtrl = TextEditingController();
   final confirmCtrl = TextEditingController();
-  final userDb = UserDatabaseService();
+  final userDb = MoodDatabase();
 
   String? _errorText;
   bool _isSaving = false;
