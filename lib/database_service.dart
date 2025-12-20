@@ -21,9 +21,10 @@ class DatabaseService {
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE results(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            result TEXT,
-            score INTEGER
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          result TEXT,
+          score INTEGER,
+          created_at TEXT
           )
         ''');
       },
@@ -35,9 +36,15 @@ class DatabaseService {
     await db.insert('results', {
       'result': result,
       'score': score,
+      'created_at': DateTime.now().toIso8601String(),
     });
+
   }
 
+  Future<void> clearResults() async {
+    final db = await database;
+    await db.delete('results');
+  }
 
   Future<List<Map<String, dynamic>>> getResults() async {
     final db = await database;

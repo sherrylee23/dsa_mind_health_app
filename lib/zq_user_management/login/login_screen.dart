@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dsa_mind_health/MoodDatabase.dart'; // Correct merged database
 import 'package:dsa_mind_health/main.dart'; // Import to access MyHomePage
+import '../../admin_login.dart';
 import '../models/user_model.dart';
 import 'register_screen.dart';
 import 'forgot_password.dart';
@@ -76,6 +77,20 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF9FB7D9),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings),
+            tooltip: 'Admin Login',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdminLoginPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView( // Added scroll for smaller screens
         padding: const EdgeInsets.all(24),

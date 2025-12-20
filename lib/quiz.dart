@@ -1,8 +1,11 @@
+import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
-import 'database_service.dart';
+
 
 class Quiz extends StatefulWidget {
-  const Quiz({super.key});
+  const Quiz({super.key, required this.userId});
+
+  final int userId;
 
   @override
   State<Quiz> createState() => _QuizState();
@@ -13,7 +16,6 @@ class _QuizState extends State<Quiz> {
   int _totalScore = 0;
   int _selectedAnswer = -1;
   bool _isSubmitted = false;
-  bool _isAdmin = false;
   String _result = '';
 
   final List<String> _questions = [
@@ -31,15 +33,6 @@ class _QuizState extends State<Quiz> {
     'Nearly every day',
   ];
 
-  List<Map<String, dynamic>> _dbResults = [];
-
-  // Load admin results from database
-  Future<void> _loadAdminResults() async {
-    final data = await DatabaseService.instance.getResults();
-    setState(() {
-      _dbResults = data;
-    });
-  }
 
   void _nextQuestion() {
     setState(() {
@@ -70,7 +63,8 @@ class _QuizState extends State<Quiz> {
       _result = finalResult;
     });
 
-    await DatabaseService.instance.insertResult(finalResult, _totalScore);
+    await MoodDatabase().insertResult(widget.userId, finalResult, _totalScore);
+
   }
 
   void _resetQuiz() {
@@ -83,7 +77,7 @@ class _QuizState extends State<Quiz> {
     });
   }
 
-  // ================= USER QUIZ UI =================
+  //USER QUIZ UI
   Widget _buildQuiz() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -125,7 +119,7 @@ class _QuizState extends State<Quiz> {
     );
   }
 
-  // ================= USER RESULT UI =================
+  // USER RESULT UI
   Widget _buildUserResult() {
     return Center(
       child: Column(
@@ -151,42 +145,7 @@ class _QuizState extends State<Quiz> {
     );
   }
 
-  // ================= ADMIN DASHBOARD =================
-  Widget _buildAdminView() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          const Text(
-            'Admin Dashboard',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: _dbResults.isEmpty
-                ? const Center(child: Text('No quiz results yet'))
-                : ListView.builder(
-              itemCount: _dbResults.length,
-              itemBuilder: (context, index) {
-                final result = _dbResults[index];
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.assignment),
-                    title: Text('User ${index + 1}'),
-                    subtitle: Text(
-                      '${result['result']} (Score: ${result['score']})',
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ================= MAIN BUILD =================
+  // MAIN BUILD
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,28 +156,8 @@ class _QuizState extends State<Quiz> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isAdmin ? Icons.admin_panel_settings : Icons.person,
-            ),
-            tooltip: 'Switch User / Admin',
-            onPressed: () async {
-              setState(() {
-                _isAdmin = !_isAdmin;
-              });
-              if (_isAdmin) {
-                await _loadAdminResults();
-              }
-            },
-          ),
-        ],
       ),
-      body: _isAdmin
-          ? _buildAdminView()
-          : _isSubmitted
-          ? _buildUserResult()
-          : _buildQuiz(),
+        body: _isSubmitted ? _buildUserResult() : _buildQuiz(),
     );
   }
 }
