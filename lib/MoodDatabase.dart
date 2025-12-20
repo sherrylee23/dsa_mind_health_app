@@ -6,6 +6,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'zq_user_management/models/user_model.dart';
+import 'package:intl/intl.dart';
+
 
 class MoodDatabase {
   static final MoodDatabase _moodDatabase = MoodDatabase._internal();
@@ -49,6 +51,17 @@ class MoodDatabase {
         createdOn TEXT DEFAULT CURRENT_TIMESTAMP
         )
         ''');
+
+    await db.execute('''
+    CREATE TABLE results(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      result TEXT,
+      score INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES Users(id)
+      )
+      ''');
     log('TABLES CREATED');
   }
 
@@ -112,7 +125,11 @@ class MoodDatabase {
       final db = await database;
 
       // Use the parameter to only delete local data for THIS specific user
-      await db.delete('Moods', where: 'userId = ?', whereArgs: [userId]); // [cite: 18]
+      await db.delete(
+        'Moods',
+        where: 'userId = ?',
+        whereArgs: [userId],
+      ); // [cite: 18]
 
       for (var moodData in response) {
         await db.insert('Moods', {
@@ -250,5 +267,68 @@ class MoodDatabase {
       where: 'id=?',
       whereArgs: [id],
     );
+  }
+
+  // ===== QUIZ DATABASE =====
+
+  Future<List<Map<String, dynamic>>> getQuizResultsWithUser() async {
+    final db = await database;
+
+    return await db.rawQuery('''
+    SELECT 
+      r.id,
+      r.result,
+      r.score,
+      r.created_at,
+      u.name AS username
+    FROM results r
+    JOIN Users u ON r.user_id = u.id
+    ORDER BY r.id DESC
+  ''');
+  }
+
+
+  Future<void> clearResults() async {
+    final db = await database;
+
+    // Clear all local results
+    await db.delete('results');
+
+    // Clear all Supabase results
+    try {
+      await Supabase.instance.client.from('quiz_result').delete().neq('id', 0);
+      log('Supabase quiz results cleared');
+    } catch (e) {
+      log('Supabase clear failed: $e');
+    }
+  }
+
+  Future<void> insertResult(int userId, String result, int score) async {
+    final db = await database;
+    // Local SQLite insert
+    await db.insert('results', {
+      'user_id': userId,
+      'result': result,
+      'score': score,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+
+    // Supabase insert
+    try {
+      await Supabase.instance.client.from('quiz_result').insert({
+        'user_id': userId,
+        'result': result,
+        'score': score,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+      log('Supabase quiz result inserted');
+    } catch (e) {
+      log('Supabase insert failed: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getResults() async {
+    final db = await database;
+    return await db.query('results', orderBy: 'id DESC');
   }
 }

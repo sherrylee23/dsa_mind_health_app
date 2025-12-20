@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'quiz.dart';
 
 class WelcomePage extends StatelessWidget {
-  const WelcomePage({super.key});
+  const WelcomePage({super.key, required this.userId});
+
+  final int userId;
+
 
   @override
   Widget build(BuildContext context) {
@@ -34,19 +37,17 @@ class WelcomePage extends StatelessWidget {
 
               // ✅ GET STARTED → QUIZ PAGE
               ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const Quiz(),
+                      builder: (context) => Quiz(userId: userId),
                     ),
                   );
                 },
                 child: const Text('Get Started'),
               ),
+
 
               const SizedBox(height: 15),
 
