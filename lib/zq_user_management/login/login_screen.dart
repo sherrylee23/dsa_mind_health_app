@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../service/user_database.dart';  // Database service
-import '../models/user_model.dart';     // User model
+import 'package:dsa_mind_health/MoodDatabase.dart'; // Correct merged database
+import 'package:dsa_mind_health/main.dart'; // Import to access MyHomePage
+import '../../admin_login.dart';
+import '../models/user_model.dart';
 import 'register_screen.dart';
 import 'forgot_password.dart';
-import '../profile_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +16,9 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final emailCtrl = TextEditingController();
   final passwordCtrl = TextEditingController();
-  final userDb = UserDatabaseService();  // Database instance
+
+  // UPDATED: Use the merged MoodDatabase class
+  final moodDb = MoodDatabase();
   String? _errorText;
 
   @override
@@ -25,26 +28,35 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {  // Now ASYNC for database
+  Future<void> _login() async {
     final email = emailCtrl.text.trim();
     final pass = passwordCtrl.text;
 
-    // Basic validation
     if (email.isEmpty || pass.isEmpty) {
       setState(() => _errorText = 'Please enter email and password');
       return;
     }
 
     try {
-      // Check real database
-      final user = await userDb.getUserByEmail(email);
+      // 1. First, fetch the user object from the database [cite: 311]
+      final user = await moodDb.getUserByEmail(email);
 
+      // 2. Check if user exists and password is correct [cite: 312]
       if (user != null && user.password == pass) {
-        // LOGIN SUCCESS → use REAL user ID from database
+
+        // 3. Now that 'user' is defined, you can safely sync their data [cite: 17]
+        await moodDb.syncFromSupabase(user.id);
+
+        if (!mounted) return;
+
+        // 4. Navigate to home with the confirmed user.id [cite: 313]
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => ProfileScreen(userId: user.id),
+            builder: (_) => MyHomePage(
+              title: 'DSA MindHealth',
+              currentUserId: user.id,
+            ),
           ),
         );
       } else {
@@ -64,15 +76,27 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF9FB7D9),
-        title: const Text(''),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings),
+            tooltip: 'Admin Login',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdminLoginPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
-      body: Padding(
+      body: SingleChildScrollView( // Added scroll for smaller screens
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8),
             const Center(
               child: Text(
                 'Welcome!\nPlease enter your detail !',
@@ -106,47 +130,34 @@ class _LoginScreenState extends State<LoginScreen> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 12),
               ),
             ),
-            const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const ForgotPasswordScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                   );
                 },
                 child: const Text('Forgot password?'),
               ),
             ),
-            if (_errorText != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                _errorText!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            ],
+            if (_errorText != null)
+              Text(_errorText!, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
             Center(
               child: SizedBox(
                 width: 160,
                 child: ElevatedButton(
-                  onPressed: _login,  // Now calls database login
+                  onPressed: _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FB7D9),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: const Text(
                     'SIGN IN',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -161,9 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const RegisterScreen()),
                       );
                     },
                     child: const Text('Sign up'),

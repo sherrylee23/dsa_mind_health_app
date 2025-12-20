@@ -1,3 +1,4 @@
+import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import '../service/user_database.dart';
 import 'login_screen.dart';
@@ -14,7 +15,7 @@ class ResetPasswordScreen extends StatefulWidget {
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final passCtrl = TextEditingController();
   final confirmCtrl = TextEditingController();
-  final userDb = UserDatabaseService();
+  final userDb = MoodDatabase();
   String? _errorText;
 
   @override
