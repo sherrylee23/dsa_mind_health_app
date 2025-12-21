@@ -1,5 +1,6 @@
 import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../service/user_database.dart';  // Database service
 import '../models/user_model.dart';     // User model
 
@@ -20,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final userDb = MoodDatabase();
   String? _errorText;
   String? _selectedGender;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -59,54 +61,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (password.length < 8) {
-    setState(() => _errorText = 'Password must be at least 8 characters');
-    return;
+      setState(() => _errorText = 'Password must be at least 8 characters');
+      return;
     }
 
     final age = int.tryParse(ageText);
     if (age == null || age <= 0) {
-    setState(() => _errorText = 'Please enter a valid age');
-    return;
+      setState(() => _errorText = 'Please enter a valid age');
+      return;
     }
 
     final gender = _selectedGender!;
 
-    try {
-    // 2. Check if email already exists
-    final existingUser = await userDb.getUserByEmail(email);
-    if (existingUser != null) {
-    setState(() => _errorText = 'Email already registered');
-    return;
-    }
-
-    // 3. Create new user matching UserModel requirements
-    final newUser = UserModel(
-    id: 0,
-    name: name,
-    email: email,
-    gender: gender,
-    age: age,
-    password: password,
-    createdOn: DateTime.now().toIso8601String(),
-    );
-
-    // 4. Save to database
-    await userDb.registerUser(newUser);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-    content: Text('Registration successful! Please login.'),
-    backgroundColor: Colors.green,
-    ),
-    );
-
-    // 5. Back to login screen
-    Navigator.pop(context);
-    } catch (e) {
     setState(() {
-    _errorText = 'Registration failed: $e';
+      _isLoading = true;
+      _errorText = null;
     });
+
+    try {
+      // 2. Check if email already exists in local database
+      final existingUser = await userDb.getUserByEmail(email);
+      if (existingUser != null) {
+        setState(() {
+          _isLoading = false;
+          _errorText = 'Email already registered';
+        });
+        return;
+      }
+
+      // 3. Register with Supabase Auth (enables password reset emails)
+      final authResponse = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+        data: {'name': name}, // Store name in user metadata
+      );
+
+      if (authResponse.user == null) {
+        setState(() {
+          _isLoading = false;
+          _errorText = 'Registration failed. Please try again.';
+        });
+        return;
+      }
+
+      // 4. Create new user for local database
+      final newUser = UserModel(
+        id: 0,
+        name: name,
+        email: email,
+        gender: gender,
+        age: age,
+        password: password,
+        createdOn: DateTime.now().toIso8601String(),
+      );
+
+      // 5. Save to local SQLite and Supabase user_model table
+      await userDb.registerUser(newUser);
+
+      // 6. Sign out from Supabase Auth (user needs to login again)
+      await Supabase.instance.client.auth.signOut();
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration successful! Please login.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // 7. Back to login screen
+      Navigator.pop(context);
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorText = 'Registration failed: $e';
+      });
     }
   }
 

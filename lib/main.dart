@@ -10,15 +10,27 @@ import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:dsa_mind_health/mood.dart';
 import 'package:dsa_mind_health/zq_user_management/profile_screen.dart';
 import 'zq_user_management/login/spash_screen.dart';
+import 'zq_user_management/login/supabase_reset_password_screen.dart';
 
 const String url = 'https://wefuzytgpzhtjurzeble.supabase.co';
 const String key = 'sb_secret_Sxx5PvKAuHSK8NksYXpSIg_TzozaSJ4';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(url: url, anonKey: key);
+
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    if (data.event == AuthChangeEvent.passwordRecovery) {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => const SupabaseResetPasswordScreen(),
+        ),
+      );
+    }
+  });
 
   final moodDB = MoodDatabase();
   // Ensure the database is initialized before syncing
@@ -32,6 +44,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF9FB7D9)),

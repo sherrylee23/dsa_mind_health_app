@@ -1,8 +1,8 @@
 import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../service/user_database.dart';
-import '../models/user_model.dart';
-import 'reset_password.dart'; 
+import '../models/user_model.dart'; 
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -29,20 +29,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
+    // check if the user exists in the database
     final user = await userDb.getUserByEmail(email);
     if (user == null) {
       setState(() => _errorText = 'Email not found');
       return;
     }
 
-    // Instead of sending real email, go to reset password page
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ResetPasswordScreen(userId: user.id),
-      ),
-    );
+    // send reset password email
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'com.example.dsa_mind_health://reset-callback',
+      );
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password reset email sent! Check your inbox.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context); // return to login screen
+    } catch (e) {
+      setState(() => _errorText = 'Failed to send email: $e');
+    }
   }
 
   @override

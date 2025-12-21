@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dsa_mind_health/MoodDatabase.dart'; // Correct merged database
 import 'package:dsa_mind_health/main.dart'; // Import to access MyHomePage
 import '../../admin_login.dart';
@@ -20,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // UPDATED: Use the merged MoodDatabase class
   final moodDb = MoodDatabase();
   String? _errorText;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -37,38 +39,96 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
+
     try {
-      // 1. First, fetch the user object from the database [cite: 311]
+      // 1. Try to login with Supabase Auth
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: pass,
+      );
+
+      // 2. Get user from local SQLite database
       final user = await moodDb.getUserByEmail(email);
 
-      // 2. Check if user exists and password is correct [cite: 312]
-      if (user != null && user.password == pass) {
-
-        // 3. Now that 'user' is defined, you can safely sync their data [cite: 17]
-        await moodDb.syncFromSupabase(user.id);
-
-        if (!mounted) return;
-
-        // 4. Navigate to home with the confirmed user.id [cite: 313]
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MyHomePage(
-              title: 'DSA MindHealth',
-              currentUserId: user.id,
-            ),
-          ),
-        );
-      } else {
+      if (user == null) {
         setState(() {
-          _errorText = 'Invalid email or password';
+          _isLoading = false;
+          _errorText = 'User data not found. Please try again.';
         });
+        return;
       }
+
+      // 3. Sync user data and navigate
+      await _proceedToHome(user);
+
+    } on AuthException catch (e) {
+      // Supabase Auth failed - check if it's a legacy user
+      await _handleLegacyUser(email, pass, e);
     } catch (e) {
       setState(() {
+        _isLoading = false;
         _errorText = 'Login failed. Please try again.';
       });
     }
+  }
+
+  // Handle legacy users who exist in local DB but not in Supabase Auth
+  Future<void> _handleLegacyUser(String email, String pass, AuthException authError) async {
+    // Check if user exists in local SQLite with matching password
+    final localUser = await moodDb.getUserByEmail(email);
+
+    if (localUser != null && localUser.password == pass) {
+      // Legacy user found - create Supabase Auth account for them
+      try {
+        await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: pass,
+          data: {'name': localUser.name},
+        );
+
+        // Now login with the newly created account
+        await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: pass,
+        );
+
+        // Proceed to home
+        await _proceedToHome(localUser);
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+          _errorText = 'Failed to migrate account. Please try again.';
+        });
+      }
+    } else {
+      // Not a legacy user, show original error
+      setState(() {
+        _isLoading = false;
+        _errorText = authError.message;
+      });
+    }
+  }
+
+  // Navigate to home after successful login
+  Future<void> _proceedToHome(UserModel user) async {
+    await moodDb.syncFromSupabase(user.id);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MyHomePage(
+          title: 'DSA MindHealth',
+          currentUserId: user.id,
+        ),
+      ),
+    );
   }
 
   @override
