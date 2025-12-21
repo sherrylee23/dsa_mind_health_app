@@ -20,7 +20,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  Future<void> _sendEmail() async {
+  Future<void> _sendResetEmail() async {
     final email = emailCtrl.text.trim();
 
     if (email.isEmpty) {
@@ -29,34 +29,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
 
     setState(() {
-      _errorText = null;
       _isLoading = true;
+      _errorText = null;
     });
 
     try {
-      // 只发送 Supabase 重置密码邮件
       await Supabase.instance.client.auth.resetPasswordForEmail(email);
-      // 上面这行会触发 Supabase 按你后台配置发送链接或验证码邮件。[web:362]
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Password reset email sent to $email. Please check your inbox.'),
+          content: Text('Password reset email sent to $email'),
           backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Login',
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+          ),
         ),
       );
 
-      // 直接回到登录页（或 pop 回上一页）
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
-      );
+      Navigator.pop(context);
     } catch (e) {
       setState(() {
-        _errorText = 'Failed to send reset email: $e';
+        _errorText = 'Email not found or failed to send: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -75,7 +76,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter your email to receive a password reset link:',
+              'Enter your email to reset password:',
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
@@ -91,29 +92,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             if (_errorText != null) ...[
               const SizedBox(height: 8),
-              Text(_errorText!, style: const TextStyle(color: Colors.red)),
+              Text(
+                _errorText!,
+                style: const TextStyle(color: Colors.red),
+              ),
             ],
             const SizedBox(height: 24),
             Center(
               child: SizedBox(
                 width: 180,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _sendEmail,
+                  onPressed: _isLoading ? null : _sendResetEmail,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FB7D9),
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                    height: 18,
-                    width: 18,
+                    height: 20,
+                    width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
                       : const Text(
-                    'SEND EMAIL',
-                    style: TextStyle(color: Colors.white),
+                    'SEND RESET EMAIL',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

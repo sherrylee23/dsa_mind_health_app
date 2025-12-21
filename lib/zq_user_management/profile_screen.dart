@@ -182,6 +182,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     },
                   ),
+                  _ProfileItem(
+                    icon: Icons.delete_outline,
+                    text: 'Delete Account',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Delete Account'),
+                          content: const Text(
+                            'Are you sure you want to delete this account? '
+                                'All your data will be removed.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                Navigator.pop(context);
+
+                                await userDb.deleteUser(_user!.id);
+
+                                if (!mounted) return;
+
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginScreen(),
+                                    settings: const RouteSettings(arguments: {'deleted': true}),
+                                  ),
+                                      (route) => false,
+                                );
+
+                              },
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
 
                 ],
               ),
