@@ -1,5 +1,9 @@
 import 'dart:io';
+import 'package:dsa_mind_health/admin_main_page.dart';
+import 'package:dsa_mind_health/admin_result.dart';
 import 'package:dsa_mind_health/describeMood.dart';
+import 'package:dsa_mind_health/main_page_of_quiz.dart';
+import 'package:dsa_mind_health/quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dsa_mind_health/MoodDatabase.dart';
@@ -9,6 +13,7 @@ import 'zq_user_management/login/spash_screen.dart';
 
 const String url = 'https://wefuzytgpzhtjurzeble.supabase.co';
 const String key = 'sb_secret_Sxx5PvKAuHSK8NksYXpSIg_TzozaSJ4';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,6 +100,16 @@ class _MyHomePageState extends State<MyHomePage> {
               context,
               MaterialPageRoute(
                 builder: (_) => Mood(
+                  userId: widget.currentUserId!,
+                ),
+              ),
+            );
+          }
+          if (title == 'Mental Quiz') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => Quiz(
                   userId: widget.currentUserId!,
                 ),
               ),
