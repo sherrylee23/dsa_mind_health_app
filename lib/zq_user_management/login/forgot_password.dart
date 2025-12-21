@@ -1,8 +1,6 @@
-import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
-import '../service/user_database.dart';
-import '../models/user_model.dart';
-import 'reset_password.dart'; 
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -13,8 +11,8 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final emailCtrl = TextEditingController();
-  final userDb = MoodDatabase();
   String? _errorText;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,25 +22,44 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _sendEmail() async {
     final email = emailCtrl.text.trim();
+
     if (email.isEmpty) {
       setState(() => _errorText = 'Please enter your email');
       return;
     }
 
-    final user = await userDb.getUserByEmail(email);
-    if (user == null) {
-      setState(() => _errorText = 'Email not found');
-      return;
-    }
+    setState(() {
+      _errorText = null;
+      _isLoading = true;
+    });
 
-    // Instead of sending real email, go to reset password page
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ResetPasswordScreen(userId: user.id),
-      ),
-    );
+    try {
+      // 只发送 Supabase 重置密码邮件
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      // 上面这行会触发 Supabase 按你后台配置发送链接或验证码邮件。[web:362]
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password reset email sent to $email. Please check your inbox.'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      // 直接回到登录页（或 pop 回上一页）
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+      );
+    } catch (e) {
+      setState(() {
+        _errorText = 'Failed to send reset email: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -58,16 +75,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter your email to reset password:',
+              'Enter your email to receive a password reset link:',
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: emailCtrl,
               keyboardType: TextInputType.emailAddress,
+              enabled: !_isLoading,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Email',
+                hintText: 'example@gmail.com',
               ),
             ),
             if (_errorText != null) ...[
@@ -79,12 +98,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               child: SizedBox(
                 width: 180,
                 child: ElevatedButton(
-                  onPressed: _sendEmail,
+                  onPressed: _isLoading ? null : _sendEmail,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FB7D9),
                   ),
-                  child: const Text(
-                    'NEXT',
+                  child: _isLoading
+                      ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Text(
+                    'SEND EMAIL',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),

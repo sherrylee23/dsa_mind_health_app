@@ -15,9 +15,6 @@ Future<void> main() async {
 
   await Supabase.initialize(url: url, anonKey: key);
 
-  final moodDB = MoodDatabase();
-  // Ensure the database is initialized before syncing
-  await moodDB.database;
 
   runApp(const MyApp());
 }
