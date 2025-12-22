@@ -11,11 +11,12 @@ class TodoListModel {
 
   final int id;
   String title;
-  List<Map<String, dynamic>> items; // {title, completed}
+  List<Map<String, dynamic>> items; // {id, title, completed}
   DateTime updatedAt;
 }
 
-/// PAGE 1 – SHOW ALL TO-DO LISTS
+// ==================== PAGE 1 – ALL TO DO LISTS ====================
+
 class TodoListHomePage extends StatefulWidget {
   const TodoListHomePage({super.key});
 
@@ -25,6 +26,7 @@ class TodoListHomePage extends StatefulWidget {
 
 class _TodoListHomePageState extends State<TodoListHomePage> {
   final List<TodoListModel> _lists = [];
+  final TextEditingController _searchCtrl = TextEditingController();
 
   String _formatDateTime(DateTime dt) {
     final d = dt.day.toString().padLeft(2, '0');
@@ -33,6 +35,12 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
     final hh = dt.hour.toString().padLeft(2, '0');
     final mm = dt.minute.toString().padLeft(2, '0');
     return '$d-$m-$y  $hh:$mm';
+  }
+
+  List<TodoListModel> get _filteredLists {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _lists;
+    return _lists.where((l) => l.title.toLowerCase().contains(q)).toList();
   }
 
   Future<void> _openNewList() async {
@@ -71,21 +79,20 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
   Future<void> _deleteList(TodoListModel list) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: const Text('Delete To Do List'),
-            content: Text('Are you sure you want to delete "${list.title}"?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Delete To Do List'),
+        content: Text('Are you sure you want to delete "${list.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
     if (confirm == true) {
@@ -95,12 +102,38 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
     }
   }
 
+  void _onSearchPressed() {
+    final visible = _filteredLists;
+    if (visible.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('No List Found'),
+          content: const Text('No to do list matches your search.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color topBlue = Color(0xFF90A4D4);
 
-    // sort by latest update (descending)
+    // newest first
     _lists.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final visibleLists = _filteredLists;
 
     return Scaffold(
       appBar: AppBar(
@@ -116,15 +149,42 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // search row: field + button
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Search To Do Lists',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 40,
+                  child: ElevatedButton(
+                    onPressed: _onSearchPressed,
+                    child: const Text('Search'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
             Expanded(
-              child: _lists.isEmpty
+              child: visibleLists.isEmpty
                   ? const Center(
                 child: Text('No To Do List yet. Tap + to create.'),
               )
                   : ListView.builder(
-                itemCount: _lists.length,
+                itemCount: visibleLists.length,
                 itemBuilder: (context, index) {
-                  final list = _lists[index];
+                  final list = visibleLists[index];
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: Material(
@@ -154,8 +214,7 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Last updated: ${_formatDateTime(
-                                          list.updatedAt)}',
+                                      'Last updated: ${_formatDateTime(list.updatedAt)}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: Colors.black87,
@@ -201,7 +260,8 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
   }
 }
 
-/// PAGE 2 – EDIT ONE TO-DO LIST
+// ==================== PAGE 2 – SINGLE TO DO LIST ====================
+
 class TodoPage extends StatefulWidget {
   const TodoPage({super.key, this.existingList});
 
@@ -229,12 +289,21 @@ class _TodoPageState extends State<TodoPage> {
     }
   }
 
+  // progress helpers
+  int get _completedCount =>
+      _todos.where((t) => t['completed'] == true).length;
+
+  double get _progress =>
+      _todos.isEmpty ? 0 : _completedCount / _todos.length;
+
   void _addTodo() {
-    if (_taskCtrl.text.trim().isEmpty) return;
+    final text = _taskCtrl.text.trim();
+    if (text.isEmpty) return;
+
     setState(() {
       _todos.add({
         'id': DateTime.now().millisecondsSinceEpoch,
-        'title': _taskCtrl.text.trim(),
+        'title': text,
         'completed': false,
       });
       _taskCtrl.clear();
@@ -312,17 +381,18 @@ class _TodoPageState extends State<TodoPage> {
   }
 
   void _saveEdit(int id) {
-    if (_editCtrl.text.trim().isEmpty) return;
+    final text = _editCtrl.text.trim();
+    if (text.isEmpty) return;
+
     setState(() {
       final index = _todos.indexWhere((t) => t['id'] == id);
       if (index != -1) {
-        _todos[index]['title'] = _editCtrl.text.trim();
+        _todos[index]['title'] = text;
       }
     });
     Navigator.pop(context);
   }
 
-  // “Add To Do List” => save and go back to home page
   void _saveAndReturn() {
     if (_titleCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -385,7 +455,6 @@ class _TodoPageState extends State<TodoPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
           children: [
-            // TITLE FIELD at the top
             TextField(
               controller: _titleCtrl,
               decoration: const InputDecoration(
@@ -395,7 +464,6 @@ class _TodoPageState extends State<TodoPage> {
             ),
             const SizedBox(height: 16),
 
-            // big rounded card with tasks
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -406,6 +474,28 @@ class _TodoPageState extends State<TodoPage> {
                 ),
                 child: Column(
                   children: [
+                    // progress without pressure
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'You completed $_completedCount out of ${_todos.length} tasks ',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: _progress,
+                        minHeight: 8,
+                        backgroundColor: Colors.white,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.greenAccent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // input + button (add task)
                     Row(
                       children: [
@@ -476,8 +566,8 @@ class _TodoPageState extends State<TodoPage> {
                                 onPressed: () => _editTodo(id),
                               ),
                               IconButton(
-                                icon:
-                                const Icon(Icons.delete_outline_outlined),
+                                icon: const Icon(
+                                    Icons.delete_outline_outlined),
                                 onPressed: () => _deleteTodo(id),
                               ),
                             ],
@@ -492,7 +582,6 @@ class _TodoPageState extends State<TodoPage> {
             ),
             const SizedBox(height: 16),
 
-            // bottom button: "Add To Do List" -> save & back
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -516,5 +605,3 @@ class _TodoPageState extends State<TodoPage> {
     );
   }
 }
-
-
