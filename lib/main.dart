@@ -11,28 +11,19 @@ import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:dsa_mind_health/mood.dart';
 import 'package:dsa_mind_health/zq_user_management/profile_screen.dart';
 import 'zq_user_management/login/spash_screen.dart';
-import 'zq_user_management/login/supabase_reset_password_screen.dart';
 
 const String url = 'https://wefuzytgpzhtjurzeble.supabase.co';
-const String key = 'sb_secret_Sxx5PvKAuHSK8NksYXpSIg_TzozaSJ4';
+const String key = 'sb_publishable_3vV_dOt0KL6grl8qlMEHfg_HzPJoEn1';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(url: url, anonKey: key);
-
-  // Listen for password recovery deep link
-  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-    if (data.event == AuthChangeEvent.passwordRecovery) {
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(
-          builder: (_) => const SupabaseResetPasswordScreen(),
-        ),
-      );
-    }
-  });
+  await Supabase.initialize(
+    url: url,
+    anonKey: key,
+  );
 
   final moodDB = MoodDatabase();
   await moodDB.database;
