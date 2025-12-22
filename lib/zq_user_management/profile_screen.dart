@@ -2,14 +2,13 @@ import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import 'edit_profile.dart';
 import 'about/about_screen.dart';
-import 'change_password.dart';
-import '../zq_user_management/service/user_database.dart';
+import 'update_password_screen.dart';
 import '../zq_user_management/models/user_model.dart';
 import 'login/login_screen.dart';
 import 'quiz_history.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final int userId; // from login module
+  final int userId; // passed from the login module
 
   const ProfileScreen({super.key, required this.userId});
 
@@ -44,7 +43,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
     if (_user == null) {
@@ -67,6 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // User Header Section
             Row(
               children: [
                 const CircleAvatar(
@@ -78,7 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _user!.name, // was 'Nomihaha'
+                      _user!.name,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -90,6 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const SizedBox(height: 24),
+            // Menu Items Container
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -123,16 +123,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }
                     },
                   ),
-
                   _ProfileItem(
                     icon: Icons.info_outline,
                     text: 'About',
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const AboutScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const AboutScreen()),
                       );
                     },
                   ),
@@ -143,85 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ChangePasswordScreen(userId: _user!.id),
-                        ),
-                      );
-                    },
-                  ),
-
-                  _ProfileItem(
-                    icon: Icons.logout,
-                    text: 'Logout',
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Logout'),
-                          content: const Text('Are you sure you want to logout?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context), // cancel
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                // close dialog
-                                Navigator.pop(context);
-                                // go back to LoginScreen and clear stack
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const LoginScreen(),
-                                  ),
-                                      (route) => false,
-                                );
-                              },
-                              child: const Text('Logout'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  _ProfileItem(
-                    icon: Icons.delete_outline,
-                    text: 'Delete Account',
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Delete Account'),
-                          content: const Text(
-                            'Are you sure you want to delete this account? '
-                                'All your data will be removed.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () async {
-                                Navigator.pop(context);
-
-                                await userDb.deleteUser(_user!.id);
-
-                                if (!mounted) return;
-
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const LoginScreen(),
-                                    settings: const RouteSettings(arguments: {'deleted': true}),
-                                  ),
-                                      (route) => false,
-                                );
-
-                              },
-                              style: TextButton.styleFrom(foregroundColor: Colors.red),
-                              child: const Text('Delete'),
-                            ),
-                          ],
+                          builder: (_) => UpdatePasswordScreen(userId: _user!.id),
                         ),
                       );
                     },
@@ -238,8 +157,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     },
                   ),
-
-
+                  _ProfileItem(
+                    icon: Icons.logout,
+                    text: 'Logout',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Logout'),
+                          content: const Text('Are you sure you want to logout?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                      (route) => false,
+                                );
+                              },
+                              child: const Text('Logout'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -250,6 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
+// Private helper widget for profile menu items
 class _ProfileItem extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -273,5 +221,3 @@ class _ProfileItem extends StatelessWidget {
     );
   }
 }
-
-
