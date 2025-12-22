@@ -1,5 +1,5 @@
+import 'dart:async'; // <--- FIX 1: Required for StreamSubscription
 import 'dart:io';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:dsa_mind_health/admin_main_page.dart';
 import 'package:dsa_mind_health/admin_result.dart';
 import 'package:dsa_mind_health/describeMood.dart';
@@ -12,20 +12,26 @@ import 'package:dsa_mind_health/mood.dart';
 import 'package:dsa_mind_health/zq_user_management/profile_screen.dart';
 import 'zq_user_management/login/spash_screen.dart';
 import 'todo_page.dart';
+import 'package:dsa_mind_health/zq_user_management/update_password_screen.dart';
 
 const String url = 'https://wefuzytgpzhtjurzeble.supabase.co';
 const String key = 'sb_secret_Sxx5PvKAuHSK8NksYXpSIg_TzozaSJ4';
 
+// Inside lib/main.dart
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(url: url, anonKey: key);
-
+  await Supabase.initialize(
+    url: url,
+    anonKey: key,
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce, // Required for secure mobile deep links
+    ),
+  );
 
   runApp(const MyApp());
 }
-final supabase = Supabase.instance.client;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -38,6 +44,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFDAE5FF),
         useMaterial3: true,
       ),
+      // Ensure your initial route leads to the SplashScreen/LoginScreen
       home: const SplashScreen(),
     );
   }
@@ -53,6 +60,34 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late final StreamSubscription<AuthState> _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Listen for the recovery event as soon as the LoginScreen starts
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        if (mounted) {
+          // Navigate immediately to the update screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const UpdatePasswordScreen(userId: 0),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel(); // Always clean up your listeners
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,6 +123,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildMenuItem(String title, String emoji) {
+    final int effectiveUserId = widget.currentUserId ?? 1;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -102,28 +138,21 @@ class _MyHomePageState extends State<MyHomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => TodoListHomePage(
-                ),
+                builder: (_) => TodoListHomePage(userId: effectiveUserId),
               ),
             );
-          }
-          if (title == 'Record Your Mood') {
+          } else if (title == 'Record Your Mood') {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => Mood(
-                  userId: widget.currentUserId!,
-                ),
+                builder: (_) => Mood(userId: effectiveUserId),
               ),
             );
-          }
-          if (title == 'Mental Quiz') {
+          } else if (title == 'Mental Quiz') {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => Quiz(
-                  userId: widget.currentUserId!,
-                ),
+                builder: (_) => Quiz(userId: effectiveUserId),
               ),
             );
           }
@@ -133,6 +162,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildBottomNav() {
+    final int effectiveUserId = widget.currentUserId ?? 1;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       color: const Color(0xFF91B1E0),
@@ -145,11 +175,7 @@ class _MyHomePageState extends State<MyHomePage> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => Mood(
-                    userId: widget.currentUserId ?? 1,
-                  ),
-                ),
+                MaterialPageRoute(builder: (context) => Mood(userId: effectiveUserId)),
               );
             },
             child: const Icon(Icons.sentiment_satisfied_alt_outlined, size: 32),
@@ -158,18 +184,11 @@ class _MyHomePageState extends State<MyHomePage> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ProfileScreen(userId: widget.currentUserId ?? 1),
-                ),
-              ); // FIXED: Removed illegal semicolon inside the parameter list
+                MaterialPageRoute(builder: (context) => ProfileScreen(userId: effectiveUserId)),
+              );
             },
-            child: const Icon(
-              Icons.person_outline,
-              size: 32,
-            ), // FIXED: Removed 'const child: const'
+            child: const Icon(Icons.person_outline, size: 32),
           ),
-
         ],
       ),
     );

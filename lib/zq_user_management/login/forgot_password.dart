@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -10,151 +9,48 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final emailCtrl = TextEditingController();
-  String? _errorText;
+  final _emailController = TextEditingController();
   bool _isLoading = false;
 
-  @override
-  void dispose() {
-    emailCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendResetEmail() async {
-    // 🔴 IMPORTANT:
-    // Clear any existing user session.
-    // Deleting a user in Supabase does NOT clear the client JWT.
-    await Supabase.instance.client.auth.signOut();
-
-    final email = emailCtrl.text.trim();
-
-    if (email.isEmpty) {
-      setState(() => _errorText = 'Please enter your email');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorText = null;
-    });
-
+  Future<void> _resetPassword() async {
+    setState(() => _isLoading = true);
     try {
-      // ✅ Send real password reset email via Supabase Auth
-      await Supabase.instance.client.auth.resetPasswordForEmail(email);
-
-      if (!mounted) return;
-
-      // ✅ Inform user to check their email
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Password reset email sent to $email. Please check your inbox.',
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Login',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
-          ),
-        ),
+      // Sends a reset email to the user
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        _emailController.text.trim(),
+        redirectTo: 'io.supabase.mindhealth://reset-callback/', // Your deep link
       );
 
-      // ✅ Return to previous screen or login page
-      Navigator.pop(context);
-
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password reset email sent! Check your inbox.')),
+        );
+      }
     } catch (e) {
-      // ❌ Handle failure (email not found, auth config issue, etc.)
-      setState(() {
-        _errorText = 'Failed to send reset email. Please try again.';
-        _isLoading = false;
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF9FB7D9),
-        title: const Text('Forgot Password'),
-      ),
+      appBar: AppBar(title: const Text('Reset Password')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Enter your email and we\'ll send you a link to reset your password:',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              enabled: !_isLoading,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Email',
-                hintText: 'example@gmail.com',
-                prefixIcon: Icon(Icons.email),
-              ),
-            ),
-            if (_errorText != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Text(
-                  _errorText!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
-            const SizedBox(height: 32),
-            Center(
-              child: SizedBox(
-                width: 200,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _sendResetEmail,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF9FB7D9),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text(
-                    'SEND RESET LINK',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            const Text('Enter your email to receive a password reset link.'),
+            TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
             const SizedBox(height: 20),
+            _isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(onPressed: _resetPassword, child: const Text('Send Reset Link')),
           ],
         ),
       ),
