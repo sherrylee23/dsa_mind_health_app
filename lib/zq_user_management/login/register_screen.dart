@@ -1,8 +1,7 @@
 import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../service/user_database.dart';  // Database service
-import '../models/user_model.dart';     // User model
+import '../models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,6 +21,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _errorText;
   String? _selectedGender;
   bool _isLoading = false;
+
+  // Email format validation
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
 
   @override
   void dispose() {
@@ -65,6 +69,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    // Email format validation
+    if (!_isValidEmail(email)) {
+      setState(() => _errorText = 'Please enter a valid email address');
+      return;
+    }
+
     final age = int.tryParse(ageText);
     if (age == null || age <= 0) {
       setState(() => _errorText = 'Please enter a valid age');
@@ -93,7 +103,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final authResponse = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
-        data: {'name': name}, // Store name in user metadata
+        data: {'name': name},
       );
 
       if (authResponse.user == null) {
@@ -123,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
       setState(() => _isLoading = false);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Registration successful! Please login.'),
@@ -133,6 +143,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // 7. Back to login screen
       Navigator.pop(context);
+    } on AuthException catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorText = e.message;
+      });
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -175,7 +190,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               ),
             ),
             const SizedBox(height: 16),
@@ -189,7 +204,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                hintText: 'example@gmail.com',
               ),
             ),
             const SizedBox(height: 16),
@@ -202,7 +218,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               ),
               items: const [
                 DropdownMenuItem(
@@ -235,7 +251,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               ),
             ),
             const SizedBox(height: 16),
@@ -249,7 +265,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               ),
             ),
             const SizedBox(height: 16),
@@ -263,7 +279,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               ),
             ),
 
@@ -280,22 +296,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: SizedBox(
                 width: 160,
                 child: ElevatedButton(
-                  onPressed: _register,
+                  onPressed: _isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FB7D9),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding:
-                    const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text(
-                    'SIGN UP',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'SIGN UP',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),

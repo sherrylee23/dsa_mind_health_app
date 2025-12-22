@@ -1,8 +1,6 @@
-import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../service/user_database.dart';
-import '../models/user_model.dart'; 
+import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -13,8 +11,8 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final emailCtrl = TextEditingController();
-  final userDb = MoodDatabase();
   String? _errorText;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -22,37 +20,52 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  Future<void> _sendEmail() async {
+  Future<void> _sendResetEmail() async {
     final email = emailCtrl.text.trim();
+
     if (email.isEmpty) {
       setState(() => _errorText = 'Please enter your email');
       return;
     }
 
-    // check if the user exists in the database
-    final user = await userDb.getUserByEmail(email);
-    if (user == null) {
-      setState(() => _errorText = 'Email not found');
-      return;
-    }
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
 
-    // send reset password email
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email,
         redirectTo: 'com.example.dsa_mind_health://reset-callback',
       );
-      
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password reset email sent! Check your inbox.'),
+        SnackBar(
+          content: Text('Password reset email sent to $email'),
           backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Login',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+          ),
         ),
       );
-      Navigator.pop(context); // return to login screen
+
+      Navigator.pop(context);
+
     } catch (e) {
-      setState(() => _errorText = 'Failed to send email: $e');
+      setState(() {
+        _errorText = 'Email not found or service error: ${e.toString()}';
+        _isLoading = false;
+      });
     }
   }
 
@@ -69,38 +82,70 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter your email to reset password:',
+              'Enter your email and we\'ll send you a link to reset your password:',
               style: TextStyle(fontSize: 16),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             TextField(
               controller: emailCtrl,
               keyboardType: TextInputType.emailAddress,
+              enabled: !_isLoading,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Email',
+                hintText: 'example@gmail.com',
+                prefixIcon: Icon(Icons.email),
               ),
             ),
             if (_errorText != null) ...[
-              const SizedBox(height: 8),
-              Text(_errorText!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Text(
+                  _errorText!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Center(
               child: SizedBox(
-                width: 180,
+                width: 200,
+                height: 50,
                 child: ElevatedButton(
-                  onPressed: _sendEmail,
+                  onPressed: _isLoading ? null : _sendResetEmail,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FB7D9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text(
-                    'NEXT',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'SEND RESET LINK',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

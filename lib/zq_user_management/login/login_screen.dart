@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:dsa_mind_health/MoodDatabase.dart'; // Correct merged database
-import 'package:dsa_mind_health/main.dart'; // Import to access MyHomePage
+import 'package:dsa_mind_health/MoodDatabase.dart';
+import 'package:dsa_mind_health/main.dart';
 import '../../admin_login.dart';
 import '../models/user_model.dart';
 import 'register_screen.dart';
@@ -18,10 +18,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final emailCtrl = TextEditingController();
   final passwordCtrl = TextEditingController();
 
-  // UPDATED: Use the merged MoodDatabase class
   final moodDb = MoodDatabase();
   String? _errorText;
   bool _isLoading = false;
+  bool _deleteMessageShown = false;
 
   @override
   void dispose() {
@@ -78,7 +78,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Handle legacy users who exist in local DB but not in Supabase Auth
   Future<void> _handleLegacyUser(String email, String pass, AuthException authError) async {
-    // Check if user exists in local SQLite with matching password
     final localUser = await moodDb.getUserByEmail(email);
 
     if (localUser != null && localUser.password == pass) {
@@ -133,6 +132,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (!_deleteMessageShown && args is Map && args['deleted'] == true) {
+      _deleteMessageShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF9FB7D9),
@@ -152,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView( // Added scroll for smaller screens
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,29 +209,48 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const ForgotPasswordScreen(),
+                    ),
                   );
                 },
                 child: const Text('Forgot password?'),
               ),
             ),
             if (_errorText != null)
-              Text(_errorText!, style: const TextStyle(color: Colors.red)),
+              Text(
+                _errorText!,
+                style: const TextStyle(color: Colors.red),
+              ),
             const SizedBox(height: 16),
             Center(
               child: SizedBox(
                 width: 160,
                 child: ElevatedButton(
-                  onPressed: _login,
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FB7D9),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text(
-                    'SIGN IN',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'SIGN IN',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -232,7 +264,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterScreen(),
+                        ),
                       );
                     },
                     child: const Text('Sign up'),

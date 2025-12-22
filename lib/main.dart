@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:dsa_mind_health/admin_main_page.dart';
 import 'package:dsa_mind_health/admin_result.dart';
 import 'package:dsa_mind_health/describeMood.dart';
@@ -22,6 +23,7 @@ Future<void> main() async {
 
   await Supabase.initialize(url: url, anonKey: key);
 
+  // Listen for password recovery deep link
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.event == AuthChangeEvent.passwordRecovery) {
       navigatorKey.currentState?.push(
@@ -33,7 +35,6 @@ Future<void> main() async {
   });
 
   final moodDB = MoodDatabase();
-  // Ensure the database is initialized before syncing
   await moodDB.database;
 
   runApp(const MyApp());
@@ -166,14 +167,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   builder: (context) =>
                       ProfileScreen(userId: widget.currentUserId ?? 1),
                 ),
-              ); // FIXED: Removed illegal semicolon inside the parameter list
+              );
             },
             child: const Icon(
               Icons.person_outline,
               size: 32,
-            ), // FIXED: Removed 'const child: const'
+            ),
           ),
-
         ],
       ),
     );
