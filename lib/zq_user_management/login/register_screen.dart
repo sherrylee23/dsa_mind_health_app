@@ -5,6 +5,7 @@ import '../models/user_model.dart';     // User model
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -125,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       Navigator.pop(context);
     } on AuthException catch (e) {
-      setState(() => _errorText = e.message);
+      setState(() => _errorText = 'check ${e.message}');
     } catch (e) {
       setState(() => _errorText = 'Registration failed: $e');
     }

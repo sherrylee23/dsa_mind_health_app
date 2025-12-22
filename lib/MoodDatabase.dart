@@ -241,18 +241,25 @@ class MoodDatabase {
     int id = await db.insert('Users', user.toMapForInsert());
 
     try {
-      await Supabase.instance.client.from('user_model').insert({
+      final res = await Supabase.instance.client
+          .from('user_model')
+          .insert({
         'name': user.name,
         'email': user.email,
         'gender': user.gender,
         'age': user.age,
         'password': user.password,
         'createdOn': DateTime.now().toIso8601String(),
-      });
-      log('Supabase successful');
+      })
+          .select();
+
+      log('>>> Supabase user_model insert result: $res');
+    } on PostgrestException catch (e) {
+      log('>>> Supabase PostgrestException: ${e.message} details=${e.details}');
     } catch (e) {
-      log('Supabase error $e');
+      log('>>> Supabase unknown error: $e');
     }
+
     return id;
   }
 
@@ -284,7 +291,7 @@ class MoodDatabase {
 
       log('Local delete complete');
 
-      _deleteFromSupabase(userId);
+     await _deleteFromSupabase(userId);
 
     } catch (e) {
       log(' Delete error: $e');
@@ -294,14 +301,36 @@ class MoodDatabase {
 
   Future<void> _deleteFromSupabase(int userId) async {
     try {
+      // 先查本地拿 email
+      final user = await getUserById(userId);
+      if (user == null) {
+        log('Supabase delete skipped: local user not found');
+        return;
+      }
+
       await Supabase.instance.client
           .from('user_model')
           .delete()
-          .eq('id', userId);
+          .eq('email', user.email);
+      log('Supabase user_model deleted for email=${user.email}');
+
+      await Supabase.instance.client
+          .from('MoodModel')
+          .delete()
+          .eq('userId', userId);
+      log('Supabase MoodModel deleted for userId=$userId');
+
+      await Supabase.instance.client
+          .from('quiz_result')
+          .delete()
+          .eq('user_id', userId);
+      log('Supabase quiz_result deleted for userId=$userId');
     } catch (e) {
-      log('Supabase delete failed (non-blocking): $e');
+      log('Supabase delete failed: $e');
     }
   }
+
+
 
 
   // ===== QUIZ DATABASE =====
