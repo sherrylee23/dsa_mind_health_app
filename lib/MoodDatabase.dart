@@ -26,19 +26,19 @@ class MoodDatabase {
     final dir = await getApplicationDocumentsDirectory();
     final path = join(dir.path, 'mind_health_app.db');
     log('Local db path $path');
-    return await openDatabase(path, onCreate: _onCreate, version: 1);
+    return await openDatabase(path, onCreate: _onCreate, version: 2);
   }
 
   void _onCreate(Database db, int version) async {
     await db.execute(
       'CREATE TABLE Moods('
-      'id INTEGER PRIMARY KEY AUTOINCREMENT,'
-      'userId INTEGER,'
-      'scale INTEGER,'
-      'title TEXT,'
-      'description TEXT,'
-      'createdOn DATETIME DEFAULT CURRENT_TIMESTAMP,'
-      'isFavorite INTEGER DEFAULT 0)',
+          'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+          'userId INTEGER,'
+          'scale INTEGER,'
+          'title TEXT,'
+          'description TEXT,'
+          'createdOn DATETIME DEFAULT CURRENT_TIMESTAMP,'
+          'isFavorite INTEGER DEFAULT 0)',
     );
     await db.execute('''
         CREATE TABLE Users(
@@ -80,7 +80,7 @@ class MoodDatabase {
     try {
       // Supabase insert - make sure 'userId' is a column in your Supabase table!
       await Supabase.instance.client.from('MoodModel').insert({
-        'userId': mood.userId, // <--- Add this
+        'userId': mood.userId,
         'scale': mood.scale,
         'title': mood.title,
         'description': mood.description,
@@ -109,7 +109,7 @@ class MoodDatabase {
 
     return List.generate(
       data.length,
-      (index) => MoodModel.fromJson(data[index]),
+          (index) => MoodModel.fromJson(data[index]),
     );
   }
 
@@ -120,7 +120,7 @@ class MoodDatabase {
       final response = await Supabase.instance.client
           .from('MoodModel')
           .select()
-          .eq('userId', userId); // [cite: 17]
+          .eq('userId', userId);
 
       final db = await database;
 
@@ -194,11 +194,11 @@ class MoodDatabase {
       await Supabase.instance.client
           .from('MoodModel')
           .update({
-            'scale': mood.scale,
-            'title': mood.title,
-            'description': mood.description,
-            'isFavorite': mood.isFavorite,
-          })
+        'scale': mood.scale,
+        'title': mood.title,
+        'description': mood.description,
+        'isFavorite': mood.isFavorite,
+      })
           .eq('id', mood.id);
       log('Supabase update successful');
     } catch (e) {
@@ -227,6 +227,8 @@ class MoodDatabase {
     return UserModel.fromJson(data.first);
   }
 
+
+
   Future<UserModel?> getUserByEmail(String email) async {
     final db = await database;
     final data = await db.query('Users', where: 'email=?', whereArgs: [email]);
@@ -239,18 +241,25 @@ class MoodDatabase {
     int id = await db.insert('Users', user.toMapForInsert());
 
     try {
-      await Supabase.instance.client.from('user_model').insert({
+      final res = await Supabase.instance.client
+          .from('user_model')
+          .insert({
         'name': user.name,
         'email': user.email,
         'gender': user.gender,
         'age': user.age,
         'password': user.password,
         'createdOn': DateTime.now().toIso8601String(),
-      });
-      log('Supabase successful');
+      })
+          .select();
+
+      log('>>> Supabase user_model insert result: $res');
+    } on PostgrestException catch (e) {
+      log('>>> Supabase PostgrestException: ${e.message} details=${e.details}');
     } catch (e) {
-      log('Supabase error $e');
+      log('>>> Supabase unknown error: $e');
     }
+
     return id;
   }
 
@@ -269,6 +278,61 @@ class MoodDatabase {
     );
   }
 
+  Future<void> deleteUser(int userId) async {
+    try {
+      final db = await database;
+
+      // Delete in transaction with timeout
+      await db.transaction((txn) async {
+        await txn.delete('results', where: 'user_id = ?', whereArgs: [userId]);
+        await txn.delete('Moods', where: 'userId = ?', whereArgs: [userId]);
+        await txn.delete('Users', where: 'id = ?', whereArgs: [userId]);
+      });
+
+      log('Local delete complete');
+
+     await _deleteFromSupabase(userId);
+
+    } catch (e) {
+      log(' Delete error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _deleteFromSupabase(int userId) async {
+    try {
+      // 先查本地拿 email
+      final user = await getUserById(userId);
+      if (user == null) {
+        log('Supabase delete skipped: local user not found');
+        return;
+      }
+
+      await Supabase.instance.client
+          .from('user_model')
+          .delete()
+          .eq('email', user.email);
+      log('Supabase user_model deleted for email=${user.email}');
+
+      await Supabase.instance.client
+          .from('MoodModel')
+          .delete()
+          .eq('userId', userId);
+      log('Supabase MoodModel deleted for userId=$userId');
+
+      await Supabase.instance.client
+          .from('quiz_result')
+          .delete()
+          .eq('user_id', userId);
+      log('Supabase quiz_result deleted for userId=$userId');
+    } catch (e) {
+      log('Supabase delete failed: $e');
+    }
+  }
+
+
+
+
   // ===== QUIZ DATABASE =====
 
   Future<List<Map<String, dynamic>>> getQuizResultsWithUser() async {
@@ -285,6 +349,21 @@ class MoodDatabase {
     JOIN Users u ON r.user_id = u.id
     ORDER BY r.id DESC
   ''');
+  }
+
+  Future<List<Map<String, dynamic>>> getQuizResultsForUser(int userId) async {
+    final db = await database;
+
+    return await db.rawQuery('''
+    SELECT 
+      r.id,
+      r.result,
+      r.score,
+      r.created_at
+    FROM results r
+    WHERE r.user_id = ?
+    ORDER BY r.created_at DESC
+  ''', [userId]);
   }
 
 

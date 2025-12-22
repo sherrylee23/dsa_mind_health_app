@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:dsa_mind_health/admin_main_page.dart';
 import 'package:dsa_mind_health/admin_result.dart';
 import 'package:dsa_mind_health/describeMood.dart';
@@ -20,9 +21,6 @@ Future<void> main() async {
 
   await Supabase.initialize(url: url, anonKey: key);
 
-  final moodDB = MoodDatabase();
-  // Ensure the database is initialized before syncing
-  await moodDB.database;
 
   runApp(const MyApp());
 }

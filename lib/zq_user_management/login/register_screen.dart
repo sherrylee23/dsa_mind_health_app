@@ -2,6 +2,9 @@ import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import '../service/user_database.dart';  // Database service
 import '../models/user_model.dart';     // User model
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +23,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final userDb = MoodDatabase();
   String? _errorText;
   String? _selectedGender;
+
+  // Email format validation
+  bool _isValidEmail(String email) {
+    return RegExp(
+        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$'
+    ).hasMatch(email);
+  }
 
   @override
   void dispose() {
@@ -59,55 +69,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (password.length < 8) {
-    setState(() => _errorText = 'Password must be at least 8 characters');
-    return;
+      setState(() => _errorText = 'Password must be at least 8 characters');
+      return;
+    }
+
+    // Email format validation
+    if (!_isValidEmail(email)) {
+      setState(() => _errorText = 'Please enter a valid email address');
+      return;
     }
 
     final age = int.tryParse(ageText);
     if (age == null || age <= 0) {
-    setState(() => _errorText = 'Please enter a valid age');
-    return;
+      setState(() => _errorText = 'Please enter a valid age');
+      return;
     }
 
     final gender = _selectedGender!;
 
     try {
-    // 2. Check if email already exists
-    final existingUser = await userDb.getUserByEmail(email);
-    if (existingUser != null) {
-    setState(() => _errorText = 'Email already registered');
-    return;
-    }
+      final existingUser = await userDb.getUserByEmail(email);
+      if (existingUser != null) {
+        setState(() => _errorText = 'Email already registered');
+        return;
+      }
 
-    // 3. Create new user matching UserModel requirements
-    final newUser = UserModel(
-    id: 0,
-    name: name,
-    email: email,
-    gender: gender,
-    age: age,
-    password: password,
-    createdOn: DateTime.now().toIso8601String(),
-    );
+      final authRes = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+        data: {'name': name},
+      );
 
-    // 4. Save to database
-    await userDb.registerUser(newUser);
+      if (authRes.user == null) {
+        setState(() => _errorText = 'Supabase sign up failed');
+        return;
+      }
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-    content: Text('Registration successful! Please login.'),
-    backgroundColor: Colors.green,
-    ),
-    );
+      final newUser = UserModel(
+        id: 0,
+        name: name,
+        email: email,
+        gender: gender,
+        age: age,
+        password: password,
+        createdOn: DateTime.now().toIso8601String(),
+      );
 
-    // 5. Back to login screen
-    Navigator.pop(context);
+      await userDb.registerUser(newUser);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration successful! Please login.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    } on AuthException catch (e) {
+      setState(() => _errorText = 'check ${e.message}');
     } catch (e) {
-    setState(() {
-    _errorText = 'Registration failed: $e';
-    });
+      setState(() => _errorText = 'Registration failed: $e');
     }
+
   }
 
   @override
@@ -157,11 +180,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                hintText: 'example@gmail.com',
               ),
             ),
             const SizedBox(height: 16),
+
 
             // Gender (dropdown)
             const Text('Gender:'),
