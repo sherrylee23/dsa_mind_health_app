@@ -26,7 +26,7 @@ class MoodDatabase {
     final dir = await getApplicationDocumentsDirectory();
     final path = join(dir.path, 'mind_health_app.db');
     log('Local db path $path');
-    return await openDatabase(path, onCreate: _onCreate, version: 1);
+    return await openDatabase(path, onCreate: _onCreate, version: 2);
   }
 
   void _onCreate(Database db, int version) async {
@@ -320,6 +320,21 @@ class MoodDatabase {
     JOIN Users u ON r.user_id = u.id
     ORDER BY r.id DESC
   ''');
+  }
+
+  Future<List<Map<String, dynamic>>> getQuizResultsForUser(int userId) async {
+    final db = await database;
+
+    return await db.rawQuery('''
+    SELECT 
+      r.id,
+      r.result,
+      r.score,
+      r.created_at
+    FROM results r
+    WHERE r.user_id = ?
+    ORDER BY r.created_at DESC
+  ''', [userId]);
   }
 
 

@@ -42,8 +42,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         SnackBar(
           content: Text('Password reset email sent to $email'),
           backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
           action: SnackBarAction(
             label: 'Login',
+            textColor: Colors.white,
             onPressed: () {
               Navigator.pushReplacement(
                 context,
@@ -55,9 +57,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
 
       Navigator.pop(context);
+
     } catch (e) {
       setState(() {
-        _errorText = 'Email not found or failed to send: ${e.toString()}';
+        _errorText = 'Email not found or service error: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -76,10 +79,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter your email to reset password:',
+              'Enter your email and we\'ll send you a link to reset your password:',
               style: TextStyle(fontSize: 16),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             TextField(
               controller: emailCtrl,
               keyboardType: TextInputType.emailAddress,
@@ -88,40 +91,64 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 border: OutlineInputBorder(),
                 labelText: 'Email',
                 hintText: 'example@gmail.com',
+                prefixIcon: Icon(Icons.email),
               ),
             ),
             if (_errorText != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _errorText!,
-                style: const TextStyle(color: Colors.red),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Text(
+                  _errorText!,
+                  style: const TextStyle(color: Colors.red),
+                ),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Center(
               child: SizedBox(
-                width: 180,
+                width: 200,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _sendResetEmail,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FB7D9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                    height: 20,
-                    width: 20,
+                    height: 24,
+                    width: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
                       : const Text(
-                    'SEND RESET EMAIL',
+                    'SEND RESET LINK',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  '← Back to Login',
+                  style: TextStyle(color: Color(0xFF9FB7D9)),
                 ),
               ),
             ),

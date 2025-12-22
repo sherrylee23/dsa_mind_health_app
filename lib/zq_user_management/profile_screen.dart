@@ -6,6 +6,7 @@ import 'change_password.dart';
 import '../zq_user_management/service/user_database.dart';
 import '../zq_user_management/models/user_model.dart';
 import 'login/login_screen.dart';
+import 'quiz_history.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int userId; // from login module
@@ -221,6 +222,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: const Text('Delete'),
                             ),
                           ],
+                        ),
+                      );
+                    },
+                  ),
+                  _ProfileItem(
+                    icon: Icons.history,
+                    text: 'Quiz History',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => QuizHistoryScreen(userId: _user!.id),
                         ),
                       );
                     },

@@ -2,6 +2,8 @@ import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:flutter/material.dart';
 import '../service/user_database.dart';  // Database service
 import '../models/user_model.dart';     // User model
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -85,14 +87,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final gender = _selectedGender!;
 
     try {
-      // 2. Check if email already exists
       final existingUser = await userDb.getUserByEmail(email);
       if (existingUser != null) {
         setState(() => _errorText = 'Email already registered');
         return;
       }
 
-      // 3. Create new user matching UserModel requirements
+      final authRes = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+        data: {'name': name},
+      );
+
+      if (authRes.user == null) {
+        setState(() => _errorText = 'Supabase sign up failed');
+        return;
+      }
+
       final newUser = UserModel(
         id: 0,
         name: name,
@@ -103,7 +114,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         createdOn: DateTime.now().toIso8601String(),
       );
 
-      // 4. Save to database
       await userDb.registerUser(newUser);
 
       if (!mounted) return;
@@ -113,14 +123,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           backgroundColor: Colors.green,
         ),
       );
-
-      // 5. Back to login screen
       Navigator.pop(context);
+    } on AuthException catch (e) {
+      setState(() => _errorText = e.message);
     } catch (e) {
-      setState(() {
-        _errorText = 'Registration failed: $e';
-      });
+      setState(() => _errorText = 'Registration failed: $e');
     }
+
   }
 
   @override
