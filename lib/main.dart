@@ -11,6 +11,7 @@ import 'package:dsa_mind_health/MoodDatabase.dart';
 import 'package:dsa_mind_health/mood.dart';
 import 'package:dsa_mind_health/zq_user_management/profile_screen.dart';
 import 'zq_user_management/login/spash_screen.dart';
+import 'todo_page.dart';
 
 const String url = 'https://wefuzytgpzhtjurzeble.supabase.co';
 const String key = 'sb_secret_Sxx5PvKAuHSK8NksYXpSIg_TzozaSJ4';
@@ -24,6 +25,7 @@ Future<void> main() async {
 
   runApp(const MyApp());
 }
+final supabase = Supabase.instance.client;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -96,6 +98,15 @@ class _MyHomePageState extends State<MyHomePage> {
         leading: Text(emoji, style: const TextStyle(fontSize: 28)),
         title: Text(title),
         onTap: () {
+          if (title == 'To Do List') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TodoListHomePage(
+                ),
+              ),
+            );
+          }
           if (title == 'Record Your Mood') {
             Navigator.push(
               context,

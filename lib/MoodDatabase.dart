@@ -1,4 +1,6 @@
 import 'dart:developer';
+import 'package:dsa_mind_health/todo_item.dart';
+import 'package:dsa_mind_health/todo_list.dart';
 import 'package:flutter/material.dart';
 import 'package:dsa_mind_health/MoodModel.dart';
 import 'package:path_provider/path_provider.dart';
@@ -62,7 +64,152 @@ class MoodDatabase {
       FOREIGN KEY (user_id) REFERENCES Users(id)
       )
       ''');
+
+    await db.execute('''
+    CREATE TABLE todo_list(
+      list_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      title TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  ''');
+
+    await db.execute('''
+    CREATE TABLE todo_item(
+      item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      list_id INTEGER,
+      title TEXT,
+      completed INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  ''');
+
     log('TABLES CREATED');
+  }
+
+  // ===== TODO LIST DATABASE (LOCAL + SUPABASE) =====
+
+  Future<List<TodoListModel>> getTodoList({required int user_id}) async {
+    final db = await database;
+    var listsData = await db.query('todo_list',
+        where: 'user_id = ?', whereArgs: [user_id],
+        orderBy: 'updated_at DESC'
+    );
+
+    final lists = <TodoListModel>[];
+    for (var listData in listsData) {
+      var itemsData = await db.query('todo_item',
+          where: 'list_id = ?', whereArgs: [listData['list_id']]
+      );
+      final items = itemsData.map((e) => TodoItemModel.fromJson(e)).toList();
+
+      lists.add(TodoListModel.fromJson({
+        ...listData as Map<String, dynamic>,
+        'items': items,
+      }));
+    }
+    return lists;
+  }
+
+  Future<void> insertList(TodoListModel list) async {
+    final db = await database;
+
+    // Convert model to map
+    Map<String, dynamic> listMap = list.toMap();
+
+    // Local SQLite insert
+    var localId = await db.insert('todo_list', listMap);
+    log('Inserted to local db $localId');
+
+    try {
+      // Supabase insert - make sure 'userId' is a column in your Supabase table!
+      await Supabase.instance.client.from('todo_list').insert({
+        'user_id': list.user_id, // <--- Add this
+        'title': list.title,
+        'updated_at': list.updated_at.toIso8601String(),
+      });
+      log('Supabase insert successful');
+    } catch (e) {
+      log('Supabase insert failed: $e');
+    }
+  }
+
+  Future<void> editList(TodoListModel list) async {
+    final db = await database;
+    var data = await db.update(
+      'todo_list',
+      list.toMap(),
+      where: 'list_id=?',
+      whereArgs: [list.list_id],
+    );
+
+    try {
+      await Supabase.instance.client
+          .from('todo_list')
+          .update({
+        'user_id': list.user_id,
+        'title': list.title,
+        'updated_at': list.updated_at,
+      })
+          .eq('list_id', list.list_id);
+      log('Supabase update successful');
+    } catch (e) {
+      log('Supabase update unsuccessful $e');
+    }
+  }
+
+  Future<void> deleteList(int id) async {
+    final db = await database;
+    await db.delete('todo_list', where: 'list_id=?', whereArgs: [id]);
+
+    try {
+      await Supabase.instance.client.from('todo_list').delete().eq('list_id', id);
+      log('Supabase delete successful');
+    } catch (e) {
+      log('Supabase delete unsuccessful $e');
+    }
+  }
+
+  Future<void> insertItem(TodoItemModel item) async {
+    final db = await database;
+
+    await db.insert('todo_item', item.toMap());
+
+    try {
+      await Supabase.instance.client.from('todo_item').insert({
+        'list_id': item.list_id,
+        'title': item.title,
+        'completed': item.completed,
+        'created_at': item.created_at.toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('Supabase insertItem failed: $e');
+    }
+  }
+
+  Future<void> editItem(TodoItemModel item) async {
+    final db = await database;
+
+    await db.update(
+      'todo_item',
+      item.toMap(),
+      where: 'item_id = ?',
+      whereArgs: [item.item_id],
+    );
+
+    try {
+      await Supabase.instance.client
+          .from('todo_item')
+          .update({
+        'list_id': item.list_id,
+        'title': item.title,
+        'completed': item.completed,
+        'created_at': item.created_at.toIso8601String(),
+      })
+          .eq('item_id', item.item_id);
+    } catch (e) {
+      debugPrint('Supabase editItem failed: $e');
+    }
   }
 
   // ====== MOOD Database
