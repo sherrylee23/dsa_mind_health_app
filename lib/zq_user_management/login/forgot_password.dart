@@ -21,6 +21,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _sendResetEmail() async {
+    // 🔴 IMPORTANT:
+    // Clear any existing user session.
+    // Deleting a user in Supabase does NOT clear the client JWT.
+    await Supabase.instance.client.auth.signOut();
+
     final email = emailCtrl.text.trim();
 
     if (email.isEmpty) {
@@ -34,16 +39,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(
-        email,
-        redirectTo: 'com.example.dsa_mind_health://reset-callback',
-      );
+      // ✅ Send real password reset email via Supabase Auth
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
 
       if (!mounted) return;
 
+      // ✅ Inform user to check their email
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Password reset email sent to $email'),
+          content: Text(
+            'Password reset email sent to $email. Please check your inbox.',
+          ),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 4),
           action: SnackBarAction(
@@ -59,15 +65,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
       );
 
+      // ✅ Return to previous screen or login page
       Navigator.pop(context);
 
     } catch (e) {
+      // ❌ Handle failure (email not found, auth config issue, etc.)
       setState(() {
-        _errorText = 'Email not found or service error: ${e.toString()}';
+        _errorText = 'Failed to send reset email. Please try again.';
         _isLoading = false;
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
