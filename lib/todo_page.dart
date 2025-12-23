@@ -82,8 +82,17 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
     );
 
     if (confirm == true) {
-      await MoodDatabase().deleteList(list.list_id);
-      _loadTodoLists();
+      try {
+        await MoodDatabase().deleteList(list.list_id);
+        _loadTodoLists();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('List deleted successfully')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
