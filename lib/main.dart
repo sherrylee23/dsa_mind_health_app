@@ -163,14 +163,34 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _buildBottomNav() {
     final int effectiveUserId = widget.currentUserId ?? 1;
+    const double iconSize = 32;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       color: const Color(0xFF91B1E0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          const Icon(Icons.home_outlined, size: 32),
-          const Icon(Icons.list_alt_rounded, size: 32),
+          // 1. Home
+          GestureDetector(
+            onTap: () {
+              // Usually just pops to top or does nothing if already on home
+            },
+            child: const Icon(Icons.home_outlined, size: iconSize),
+          ),
+
+          // 2. To-Do List
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => TodoListHomePage(userId: effectiveUserId)),
+              );
+            },
+            child: const Icon(Icons.list_alt_rounded, size: iconSize),
+          ),
+
+          // 3. Mood Recording
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -178,8 +198,21 @@ class _MyHomePageState extends State<MyHomePage> {
                 MaterialPageRoute(builder: (context) => Mood(userId: effectiveUserId)),
               );
             },
-            child: const Icon(Icons.sentiment_satisfied_alt_outlined, size: 32),
+            child: const Icon(Icons.sentiment_satisfied_alt_outlined, size: iconSize),
           ),
+
+          // 4. Mental Quiz / Results (The missing icon)
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => Quiz(userId: effectiveUserId)),
+              );
+            },
+            child: const Icon(Icons.description_outlined, size: iconSize), // Document icon for results/quiz
+          ),
+
+          // 5. Profile
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -187,7 +220,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 MaterialPageRoute(builder: (context) => ProfileScreen(userId: effectiveUserId)),
               );
             },
-            child: const Icon(Icons.person_outline, size: 32),
+            child: const Icon(Icons.person_outline, size: iconSize),
           ),
         ],
       ),

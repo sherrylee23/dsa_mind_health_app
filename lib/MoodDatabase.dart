@@ -225,10 +225,17 @@ class MoodDatabase {
 
   Future<void> deleteList(int id) async {
     final db = await database;
-    await db.delete('todo_list', where: 'list_id=?', whereArgs: [id]);
+
+    await db.delete('todo_item', where: 'list_id = ?', whereArgs: [id]);
+
+    await db.delete('todo_list', where: 'list_id = ?', whereArgs: [id]);
 
     try {
-      await Supabase.instance.client.from('todo_list').delete().eq('list_id', id);
+      await Supabase.instance.client
+          .from('todo_list')
+          .delete()
+          .eq('list_id', id);
+
       log('Supabase todo_list delete successful');
     } catch (e) {
       _logSupabaseError('todo_list delete', e);

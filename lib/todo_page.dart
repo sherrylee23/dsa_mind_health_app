@@ -24,7 +24,7 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
   }
 
   Future<void> _loadTodoLists() async {
-    // Uses the passed userId to filter lists [cite: 63]
+    // Uses the passed userId to filter lists [cite: 6, 58]
     final lists = await MoodDatabase().getTodoList(user_id: widget.userId);
     setState(() {
       _lists.clear();
@@ -82,8 +82,17 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
     );
 
     if (confirm == true) {
-      await MoodDatabase().deleteList(list.list_id);
-      _loadTodoLists();
+      try {
+        await MoodDatabase().deleteList(list.list_id); // [cite: 78]
+        _loadTodoLists();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('List deleted successfully')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -110,23 +119,28 @@ class _TodoListHomePageState extends State<TodoListHomePage> {
                 itemCount: visibleLists.length,
                 itemBuilder: (context, index) {
                   final list = visibleLists[index];
-                  return ListTile(
-                    tileColor: topBlue,
-                    title: Text(list.title),
-                    subtitle: Text('Last updated: ${_formatDateTime(list.updated_at)}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(icon: const Icon(Icons.edit, color: Colors.white), onPressed: () => _openExistingList(list)),
-                        IconButton(icon: const Icon(Icons.delete), onPressed: () => _deleteList(list)),
-                      ],
+                  return Card(
+                    color: topBlue,
+                    child: ListTile(
+                      title: Text(list.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      subtitle: Text('Last updated: ${_formatDateTime(list.updated_at)}', style: const TextStyle(color: Colors.white70)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(icon: const Icon(Icons.edit, color: Colors.white), onPressed: () => _openExistingList(list)),
+                          IconButton(icon: const Icon(Icons.delete, color: Colors.white), onPressed: () => _deleteList(list)),
+                        ],
+                      ),
+                      onTap: () => _openExistingList(list),
                     ),
-                    onTap: () => _openExistingList(list),
                   );
                 },
               ),
             ),
-            ElevatedButton(onPressed: _openNewList, child: const Text('Create New List')),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(onPressed: _openNewList, child: const Text('Create New To Do List')),
+            ),
           ],
         ),
       ),
@@ -156,10 +170,18 @@ class _TodoPageState extends State<TodoPage> {
     super.initState();
     if (widget.existingList != null) {
       _titleCtrl.text = widget.existingList!.title;
-      _todos = List<TodoItemModel>.from(widget.existingList!.items); // [cite: 25]
+      _todos = List<TodoItemModel>.from(widget.existingList!.items); // [cite: 30]
     } else {
-      _todos = []; // [cite: 26]
+      _todos = [];
     }
+  }
+
+  // --- LOGIC METHODS ---
+
+  double get _completionPercentage {
+    if (_todos.isEmpty) return 0.0;
+    int completedCount = _todos.where((item) => item.completed == 1).length;
+    return completedCount / _todos.length;
   }
 
   Future<void> _addTodo() async {
@@ -174,7 +196,7 @@ class _TodoPageState extends State<TodoPage> {
         completed: 0,
         created_at: DateTime.now().toIso8601String(),
       );
-      await MoodDatabase().insertItem(newItem); // Saves to DB immediately for existing lists
+      await MoodDatabase().insertItem(newItem); // [cite: 82]
       setState(() {
         _todos.add(newItem);
       });
@@ -192,6 +214,43 @@ class _TodoPageState extends State<TodoPage> {
     _taskCtrl.clear();
   }
 
+  Future<void> _toggleTodo(TodoItemModel item) async {
+    setState(() {
+      item.completed = (item.completed == 1) ? 0 : 1;
+    });
+
+    if (widget.existingList != null && item.item_id != 0) {
+      await MoodDatabase().editItem(item); //
+    }
+  }
+
+  Future<void> _editTodoItem(int index) async {
+    final item = _todos[index];
+    final TextEditingController editCtrl = TextEditingController(text: item.title);
+
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Task'),
+        content: TextField(controller: editCtrl, autofocus: true, decoration: const InputDecoration(hintText: "Enter task name")),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, editCtrl.text.trim()), child: const Text('Save')),
+        ],
+      ),
+    );
+
+    if (newTitle != null && newTitle.isNotEmpty) {
+      setState(() {
+        item.title = newTitle;
+      });
+
+      if (widget.existingList != null && item.item_id != 0) {
+        await MoodDatabase().editItem(item); //
+      }
+    }
+  }
+
   void _saveAndReturn() async {
     final String now = DateTime.now().toIso8601String();
     final title = _titleCtrl.text.trim();
@@ -202,43 +261,109 @@ class _TodoPageState extends State<TodoPage> {
         title: title,
         updated_at: now,
       );
-      await MoodDatabase().editList(updatedList); // [cite: 32]
+      await MoodDatabase().editList(updatedList); // [cite: 75]
       Navigator.pop(context, updatedList);
     } else {
       final newList = TodoListModel(
         list_id: 0,
-        user_id: widget.userId, // Uses the dynamic userId passed from Page 1
+        user_id: widget.userId,
         title: title,
         items: _todos,
         updated_at: now,
       );
-
-      await MoodDatabase().insertFullList(newList); // Saves List and Items at once
+      await MoodDatabase().insertFullList(newList); // [cite: 68]
       Navigator.pop(context, newList);
     }
   }
+
+  // --- UI BUILD ---
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('To Do List')),
-      body: Column(
-        children: [
-          TextField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
-          Row(
-            children: [
-              Expanded(child: TextField(controller: _taskCtrl)),
-              ElevatedButton(onPressed: _addTodo, child: const Text('Add')),
-            ],
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _todos.length,
-              itemBuilder: (context, index) => ListTile(title: Text(_todos[index].title)),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'To Do List Title',
+                    border: OutlineInputBorder()
+                )
             ),
-          ),
-          ElevatedButton(onPressed: _saveAndReturn, child: const Text('Done')),
-        ],
+            const SizedBox(height: 16),
+            Text('You completed ${_todos.where((t) => t.completed == 1).length} out of ${_todos.length} tasks'),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: _completionPercentage,
+              color: Colors.green,
+              backgroundColor: Colors.grey[200],
+              minHeight: 8,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: TextField(
+                        controller: _taskCtrl,
+                        decoration: const InputDecoration(hintText: 'Enter task...')
+                    )
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(onPressed: _addTodo, child: const Text('+ Add')),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _todos.length,
+                itemBuilder: (context, index) {
+                  final item = _todos[index];
+                  return ListTile(
+                    leading: Checkbox(
+                      value: item.completed == 1,
+                      onChanged: (_) => _toggleTodo(item),
+                    ),
+                    title: Text(
+                      item.title,
+                      style: TextStyle(
+                          decoration: item.completed == 1 ? TextDecoration.lineThrough : null,
+                          color: item.completed == 1 ? Colors.grey : Colors.black
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                            onPressed: () => _editTodoItem(index)
+                        ),
+                        IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              setState(() => _todos.removeAt(index));
+                              // Optional: Add DB delete logic here if list exists
+                            }
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF90A4D4)),
+                  onPressed: _saveAndReturn,
+                  child: const Text('Done', style: TextStyle(color: Colors.white))
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
